@@ -131,8 +131,22 @@ const Report = () => {
 
       recognitionInstance.onend = () => {
         console.log('Speech recognition ended');
-        setIsRecording(false);
         setSpeechInterim('');
+        
+        // Auto-restart if still in voice mode (unless user explicitly stopped)
+        if (inputMode === 'voice' && isRecording) {
+          console.log('Auto-restarting speech recognition...');
+          setTimeout(() => {
+            try {
+              recognitionInstance.start();
+            } catch (error) {
+              console.log('Recognition already running or failed to restart');
+            }
+          }, 100);
+        } else {
+          setIsRecording(false);
+        }
+        
         const merged = [speechBase, speechCommitted].filter(Boolean).join(' ');
         form.setValue('description', merged);
       };
@@ -174,8 +188,8 @@ const Report = () => {
 
   const stopRecording = () => {
     if (recognition && isRecording) {
+      setIsRecording(false); // Set this FIRST before stopping
       recognition.stop();
-      setIsRecording(false);
     }
   };
 
