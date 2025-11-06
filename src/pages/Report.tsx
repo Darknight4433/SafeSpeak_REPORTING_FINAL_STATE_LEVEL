@@ -213,6 +213,9 @@ const Report = () => {
     try {
       console.log('Starting report submission...', { category: values.category, isAnonymous: values.isAnonymous });
       
+      // Show optimistic loading toast
+      toast.loading('Submitting your report securely...', { id: 'submit-toast' });
+      
       const reportNumber = await getNextReportNumber();
       const reportId = formatReportId(reportNumber);
       
@@ -231,19 +234,25 @@ const Report = () => {
       await push(reportsRef, reportData);
 
       console.log('Report submitted successfully!');
+      
+      // Dismiss loading and show success
+      toast.dismiss('submit-toast');
       toast.success(`Report submitted successfully! Your report ID is: ${reportId}`, {
-        duration: 5000,
+        duration: 7000,
       });
       
-      // Smooth reset
-      form.reset();
-      setIsAnonymous(true);
-      setInputMode('text');
-      inputModeRef.current = 'text';
-      setTranscript('');
+      // Smooth reset with delay for better UX
+      setTimeout(() => {
+        form.reset();
+        setIsAnonymous(true);
+        setInputMode('text');
+        inputModeRef.current = 'text';
+        setTranscript('');
+        
+        // Smooth scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 500);
       
-      // Smooth scroll to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error: any) {
       console.error('❌ Error submitting report:', error);
       console.error('Error details:', {
@@ -251,6 +260,8 @@ const Report = () => {
         code: error?.code,
         stack: error?.stack
       });
+      
+      toast.dismiss('submit-toast');
       
       let errorMessage = 'Failed to submit report. ';
       if (error?.message?.includes('Firebase')) {
@@ -271,38 +282,44 @@ const Report = () => {
       <main className="flex-1 py-12 px-4">
         <div className="container max-w-4xl mx-auto space-y-8">
           {/* Header Section */}
-          <div className="text-center space-y-3 animate-fade-in">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent transition-all duration-300">
+          <div className="text-center space-y-4 animate-fade-in">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-primary-glow to-secondary bg-clip-text text-transparent transition-all duration-500 hover:scale-105">
               Submit a Confidential Report
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto transition-all duration-300">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto transition-all duration-300 leading-relaxed">
               Your safety is our priority. All reports are handled with care and confidentiality.
             </p>
           </div>
 
           {/* Anonymous Toggle Card */}
-          <Card className="border-primary/20 shadow-lg animate-fade-in transition-all duration-300 hover:shadow-xl hover:scale-[1.01]">
+          <Card className="border-primary/20 shadow-lg animate-fade-in transition-all duration-300 hover:shadow-xl hover:scale-[1.01] hover:border-primary/40">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="transition-all duration-300">
-                    {isAnonymous ? <UserX className="h-6 w-6 text-primary" /> : <User className="h-6 w-6 text-primary" />}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-lg bg-primary/10 transition-all duration-300 hover:bg-primary/20">
+                    {isAnonymous ? (
+                      <UserX className="h-6 w-6 text-primary transition-all duration-300" />
+                    ) : (
+                      <User className="h-6 w-6 text-primary transition-all duration-300" />
+                    )}
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg transition-all duration-300">
                       {isAnonymous ? 'Anonymous Report' : 'Named Report'}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground transition-all duration-300">
                       You can stay completely private if you want - it's up to you!
                     </p>
                   </div>
                 </div>
                 <Switch
                   checked={!isAnonymous}
+                  disabled={isSubmitting}
                   onCheckedChange={(checked) => {
                     setIsAnonymous(!checked);
                     form.setValue('isAnonymous', !checked);
                   }}
+                  className="transition-all duration-300"
                 />
               </div>
             </CardContent>
@@ -324,26 +341,29 @@ const Report = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {categories.map((cat, index) => {
                           const Icon = cat.icon;
+                          const isSelected = field.value === cat.value;
                           return (
                             <Card
                               key={cat.value}
-                              className={`cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 ${
-                                field.value === cat.value
-                                  ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
-                                  : 'border-border bg-card'
-                              }`}
-                              onClick={() => field.onChange(cat.value)}
+                              className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98] ${
+                                isSelected
+                                  ? 'border-primary bg-primary/10 shadow-lg scale-[1.02] ring-2 ring-primary/20'
+                                  : 'border-border bg-card hover:border-primary/50 hover:bg-primary/5'
+                              } ${isSubmitting ? 'opacity-50 pointer-events-none' : ''}`}
+                              onClick={() => !isSubmitting && field.onChange(cat.value)}
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
                               <CardContent className="p-6 flex items-center gap-4">
                                 <div className={`p-3 rounded-lg transition-all duration-300 ${
-                                  field.value === cat.value ? 'bg-primary/10 scale-110' : 'bg-muted'
+                                  isSelected ? 'bg-primary/20 scale-110 shadow-md' : 'bg-muted group-hover:scale-105'
                                 }`}>
                                   <Icon className={`h-6 w-6 transition-all duration-300 ${
-                                    field.value === cat.value ? 'text-primary' : 'text-muted-foreground'
+                                    isSelected ? 'text-primary' : 'text-muted-foreground'
                                   }`} />
                                 </div>
-                                <span className="font-medium transition-all duration-300">{cat.label}</span>
+                                <span className={`font-medium transition-all duration-300 ${isSelected ? 'text-primary' : ''}`}>
+                                  {cat.label}
+                                </span>
                               </CardContent>
                             </Card>
                           );
@@ -367,23 +387,28 @@ const Report = () => {
                       </FormLabel>
                       <p className="text-muted-foreground mb-4">Help us understand the urgency</p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {intensityLevels.map((level, index) => (
-                          <Card
-                            key={level.value}
-                            className={`cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 ${
-                              field.value === level.value
-                                ? `${level.color} shadow-md border-2 scale-105`
-                                : 'border-border bg-card hover:border-primary/30'
-                            }`}
-                            onClick={() => field.onChange(level.value)}
-                            style={{ animationDelay: `${index * 75}ms` }}
-                          >
-                            <CardContent className="p-4 text-center transition-all duration-300">
-                              <div className="font-semibold text-base mb-1">{level.label}</div>
-                              <div className="text-xs opacity-80">{level.description}</div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                        {intensityLevels.map((level, index) => {
+                          const isSelected = field.value === level.value;
+                          return (
+                            <Card
+                              key={level.value}
+                              className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-110 active:scale-95 ${
+                                isSelected
+                                  ? `${level.color} shadow-lg border-2 scale-105 ring-2 ring-offset-2`
+                                  : 'border-border bg-card hover:border-primary/30'
+                              } ${isSubmitting ? 'opacity-50 pointer-events-none' : ''}`}
+                              onClick={() => !isSubmitting && field.onChange(level.value)}
+                              style={{ animationDelay: `${index * 75}ms` }}
+                            >
+                              <CardContent className="p-4 text-center transition-all duration-300">
+                                <div className={`font-semibold text-base mb-1 transition-all duration-300 ${isSelected ? 'scale-110' : ''}`}>
+                                  {level.label}
+                                </div>
+                                <div className="text-xs opacity-80">{level.description}</div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -403,14 +428,15 @@ const Report = () => {
                           Tell us what happened <span className="text-destructive">*</span>
                         </FormLabel>
                         
-                        {/* Input Mode Toggle */}
+                         {/* Input Mode Toggle */}
                         <div className="flex gap-2 mb-4">
                           <Button
                             type="button"
                             variant={inputMode === 'text' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setInputMode('text')}
-                            className="flex-1 transition-all duration-300 hover:scale-105"
+                            className="flex-1 transition-all duration-300 hover:scale-105 hover:shadow-md"
+                            disabled={isSubmitting}
                           >
                             Text Input
                           </Button>
@@ -419,7 +445,8 @@ const Report = () => {
                             variant={inputMode === 'voice' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setInputMode('voice')}
-                            className="flex-1 transition-all duration-300 hover:scale-105"
+                            className="flex-1 transition-all duration-300 hover:scale-105 hover:shadow-md"
+                            disabled={isSubmitting}
                           >
                             <Mic className="mr-2 h-4 w-4" />
                             Voice Input
@@ -431,7 +458,8 @@ const Report = () => {
                             {inputMode === 'text' ? (
                               <Textarea
                                 placeholder="Please describe your concern in detail... We're here to listen and help."
-                                className="min-h-40 resize-none transition-all duration-300 focus:scale-[1.01]"
+                                className="min-h-40 resize-none transition-all duration-300 focus:scale-[1.01] focus:shadow-lg"
+                                disabled={isSubmitting}
                                 {...field}
                               />
                             ) : (
@@ -439,14 +467,22 @@ const Report = () => {
                                 <div className="relative">
                                   <Textarea
                                     placeholder="Your spoken words will appear here..."
-                                    className="min-h-40 resize-none bg-primary/5 transition-all duration-300"
+                                    className="min-h-40 resize-none bg-primary/5 transition-all duration-300 focus:shadow-lg"
                                     {...field}
                                     readOnly
                                   />
                                   {isRecording && (
-                                    <div className="absolute top-3 right-3 flex items-center gap-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse shadow-lg">
-                                      <Mic className="h-4 w-4 animate-pulse" />
-                                      Recording...
+                                    <div className="absolute top-3 right-3 flex items-center gap-2 bg-red-500 text-white px-3 py-2 rounded-full text-sm font-semibold shadow-lg">
+                                      <div className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                                      </div>
+                                      Recording
+                                    </div>
+                                  )}
+                                  {field.value && field.value.length > 0 && (
+                                    <div className="absolute bottom-3 right-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded backdrop-blur-sm">
+                                      {field.value.split(' ').filter(w => w).length} words
                                     </div>
                                   )}
                                 </div>
@@ -456,9 +492,12 @@ const Report = () => {
                                     variant="destructive"
                                     size="sm"
                                     onClick={stopRecording}
-                                    className="w-full transition-all duration-300 hover:scale-105 animate-fade-in"
+                                    className="w-full transition-all duration-300 hover:scale-105 hover:shadow-lg animate-fade-in"
                                   >
-                                    Stop Recording
+                                    <div className="flex items-center justify-center gap-2">
+                                      <div className="h-3 w-3 bg-white rounded-sm"></div>
+                                      Stop Recording
+                                    </div>
                                   </Button>
                                 )}
                               </div>
@@ -466,12 +505,12 @@ const Report = () => {
                           </div>
                         </FormControl>
                         
-                        <FormDescription>
+                        <FormDescription className="transition-all duration-300">
                           {inputMode === 'voice' 
                             ? isRecording 
-                              ? "🎤 Listening... Your words appear above. Switch to Text mode to stop."
-                              : "Starting voice recording..."
-                            : "Type your message here. Switch to Voice mode to speak instead."}
+                              ? "🎤 Listening continuously... Your words appear above as you speak."
+                              : "⏳ Preparing microphone..."
+                            : "💬 Type your message here, or switch to Voice mode to speak instead."}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -492,7 +531,8 @@ const Report = () => {
                             min="5" 
                             max="99" 
                             placeholder="Enter your age" 
-                            className="max-w-xs"
+                            className="max-w-xs transition-all duration-300 focus:scale-[1.02] focus:shadow-lg"
+                            disabled={isSubmitting}
                             {...field} 
                           />
                         </FormControl>
@@ -510,7 +550,12 @@ const Report = () => {
                         <FormLabel className="text-xl font-semibold">Where are you from?</FormLabel>
                         <p className="text-sm text-muted-foreground mb-2">Your school or area (optional)</p>
                         <FormControl>
-                          <Input placeholder="e.g., Delhi Public School, Mumbai" {...field} />
+                          <Input 
+                            placeholder="e.g., Delhi Public School, Mumbai" 
+                            className="transition-all duration-300 focus:scale-[1.01] focus:shadow-lg"
+                            disabled={isSubmitting}
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -528,7 +573,12 @@ const Report = () => {
                           <FormItem>
                             <FormLabel>Your Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter your name" {...field} />
+                              <Input 
+                                placeholder="Enter your name" 
+                                className="transition-all duration-300 focus:scale-[1.01] focus:shadow-lg"
+                                disabled={isSubmitting}
+                                {...field} 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -542,7 +592,12 @@ const Report = () => {
                           <FormItem>
                             <FormLabel>Contact Information</FormLabel>
                             <FormControl>
-                              <Input placeholder="Email or phone number" {...field} />
+                              <Input 
+                                placeholder="Email or phone number" 
+                                className="transition-all duration-300 focus:scale-[1.01] focus:shadow-lg"
+                                disabled={isSubmitting}
+                                {...field} 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -555,7 +610,7 @@ const Report = () => {
 
               {/* Info Cards */}
               <div className="grid md:grid-cols-2 gap-4 animate-fadeIn">
-                <div className="flex items-start gap-3 p-5 bg-primary/5 rounded-xl border border-primary/20 transition-all duration-300 hover:shadow-md hover:scale-[1.01]">
+                <div className="flex items-start gap-3 p-5 bg-primary/5 rounded-xl border border-primary/20 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-primary/40 cursor-default">
                   <Shield className="h-6 w-6 text-primary mt-0.5 flex-shrink-0 transition-all duration-300" />
                   <div className="text-sm">
                     <p className="font-semibold mb-1 text-base">Your Security Matters</p>
@@ -565,7 +620,7 @@ const Report = () => {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-5 bg-destructive/5 rounded-xl border border-destructive/20 transition-all duration-300 hover:shadow-md hover:scale-[1.01]">
+                <div className="flex items-start gap-3 p-5 bg-destructive/5 rounded-xl border border-destructive/20 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-destructive/40 cursor-default">
                   <Phone className="h-6 w-6 text-destructive mt-0.5 flex-shrink-0 transition-all duration-300" />
                   <div className="text-sm">
                     <p className="font-semibold mb-1 text-base">Emergency? Call Now</p>
@@ -578,19 +633,20 @@ const Report = () => {
 
               <Button 
                 type="submit" 
-                className="w-full text-lg py-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] animate-fade-in" 
+                className="w-full text-lg py-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] animate-fade-in relative overflow-hidden group" 
                 size="lg" 
                 disabled={isSubmitting}
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-primary-glow/0 via-primary-glow/20 to-primary-glow/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Submitting Report...
+                    <span className="relative">Submitting Report...</span>
                   </>
                 ) : (
                   <>
-                    <Shield className="mr-2 h-5 w-5" />
-                    Submit Report Safely
+                    <Shield className="mr-2 h-5 w-5 relative" />
+                    <span className="relative">Submit Report Safely</span>
                   </>
                 )}
               </Button>
