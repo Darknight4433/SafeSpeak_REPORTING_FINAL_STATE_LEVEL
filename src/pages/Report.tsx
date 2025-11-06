@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -49,9 +49,9 @@ const Report = () => {
   const [inputMode, setInputMode] = useState<'text' | 'voice'>('text');
   const [isRecording, setIsRecording] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
-  const [speechBase, setSpeechBase] = useState("");
-  const [speechCommitted, setSpeechCommitted] = useState("");
-  const [speechInterim, setSpeechInterim] = useState("");
+  const [transcript, setTranscript] = useState("");
+  const isRecordingRef = useRef(false);
+  const inputModeRef = useRef<'text' | 'voice'>('text');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,43 +82,39 @@ const Report = () => {
       };
 
       recognitionInstance.onresult = (event: any) => {
-        let finalChunk = '';
-        let interimChunk = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript.trim();
-          if (event.results[i].isFinal) {
-            finalChunk += (finalChunk ? ' ' : '') + transcript;
-          } else {
-            interimChunk = transcript;
-          }
+        let fullTranscript = '';
+        
+        // Get all results (both final and interim)
+        for (let i = 0; i < event.results.length; i++) {
+          fullTranscript += event.results[i][0].transcript;
         }
-
-        if (finalChunk) {
-          setSpeechCommitted((prev) => {
-            const nextCommitted = prev ? prev + ' ' + finalChunk : finalChunk;
-            const merged = [speechBase, nextCommitted, speechInterim].filter(Boolean).join(' ');
-            form.setValue('description', merged);
-            return nextCommitted;
-          });
-        }
-        setSpeechInterim(interimChunk);
-        const merged = [speechBase, speechCommitted, interimChunk].filter(Boolean).join(' ');
-        form.setValue('description', merged);
+        
+        console.log('Transcript:', fullTranscript);
+        setTranscript(fullTranscript);
+        form.setValue('description', fullTranscript);
       };
 
       recognitionInstance.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
+        
+        // Don't show error for aborted (user stopped)
+        if (event.error === 'aborted') {
+          return;
+        }
+        
         setIsRecording(false);
+        isRecordingRef.current = false;
+        
         let errorMessage = 'Recording failed. ';
         switch (event.error) {
           case 'no-speech':
-            errorMessage = 'No speech detected. Please try again.';
+            errorMessage = 'No speech detected. Please try speaking.';
             break;
           case 'audio-capture':
             errorMessage = 'No microphone found. Please check your device.';
             break;
           case 'not-allowed':
-            errorMessage = 'Microphone access denied. Please allow microphone access and try again.';
+            errorMessage = 'Microphone access denied. Please allow microphone access.';
             break;
           case 'network':
             errorMessage = 'Network error. Please check your connection.';
@@ -130,32 +126,28 @@ const Report = () => {
       };
 
       recognitionInstance.onend = () => {
-        console.log('Speech recognition ended');
-        setSpeechInterim('');
+        console.log('Speech recognition ended, should restart?', isRecordingRef.current);
         
-        // Auto-restart if still in voice mode (unless user explicitly stopped)
-        if (inputMode === 'voice' && isRecording) {
+        // Auto-restart if still in voice mode
+        if (isRecordingRef.current && inputModeRef.current === 'voice') {
           console.log('Auto-restarting speech recognition...');
           setTimeout(() => {
             try {
               recognitionInstance.start();
             } catch (error) {
-              console.log('Recognition already running or failed to restart');
+              console.log('Failed to restart recognition:', error);
             }
           }, 100);
         } else {
           setIsRecording(false);
         }
-        
-        const merged = [speechBase, speechCommitted].filter(Boolean).join(' ');
-        form.setValue('description', merged);
       };
 
       setRecognition(recognitionInstance);
     } else {
       console.log('Speech recognition not supported in this browser');
     }
-  }, [form, speechBase, speechCommitted, speechInterim]);
+  }, [form]);
 
   const startRecording = async () => {
     if (!recognition) {
@@ -164,15 +156,15 @@ const Report = () => {
     }
 
     try {
-      setSpeechBase(form.getValues('description'));
-      setSpeechCommitted('');
-      setSpeechInterim('');
-
+      // Clear transcript and start fresh
+      setTranscript('');
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop());
       
       recognition.start();
       setIsRecording(true);
+      isRecordingRef.current = true;
       toast.success('🎤 Recording... Speak now!');
     } catch (error: any) {
       console.error('Microphone permission error:', error);
@@ -188,19 +180,27 @@ const Report = () => {
 
   const stopRecording = () => {
     if (recognition && isRecording) {
-      setIsRecording(false); // Set this FIRST before stopping
+      isRecordingRef.current = false; // Set ref FIRST
+      setIsRecording(false);
       recognition.stop();
     }
   };
 
   // Auto-start recording when voice mode is selected
   useEffect(() => {
+    inputModeRef.current = inputMode;
+    
     if (inputMode === 'voice' && !isRecording && recognition) {
       startRecording();
     } else if (inputMode === 'text' && isRecording) {
       stopRecording();
     }
   }, [inputMode]);
+  
+  // Sync recording state with ref
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
@@ -239,9 +239,8 @@ const Report = () => {
       form.reset();
       setIsAnonymous(true);
       setInputMode('text');
-      setSpeechBase('');
-      setSpeechCommitted('');
-      setSpeechInterim('');
+      inputModeRef.current = 'text';
+      setTranscript('');
       
       // Smooth scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
