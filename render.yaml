@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: safespeak
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
