@@ -33,7 +33,7 @@ git clone https://github.com/your-username/safespeak-reporting.git
 cd safespeak-reporting
 
 
-Install dependencies
+Install dependencies-
 
 npm install
 
