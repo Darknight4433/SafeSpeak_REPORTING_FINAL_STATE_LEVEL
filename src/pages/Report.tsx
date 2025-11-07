@@ -72,6 +72,8 @@ const Report = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognitionInstance = new SpeechRecognition();
+      
+      // Optimized settings for Raspberry Pi Chromium
       recognitionInstance.continuous = true;
       recognitionInstance.interimResults = true;
       recognitionInstance.lang = 'en-US';
@@ -79,6 +81,8 @@ const Report = () => {
 
       recognitionInstance.onstart = () => {
         console.log('Speech recognition started');
+        setIsRecording(true);
+        isRecordingRef.current = true;
       };
 
       recognitionInstance.onresult = (event: any) => {
@@ -87,6 +91,9 @@ const Report = () => {
         // Get all results (both final and interim)
         for (let i = 0; i < event.results.length; i++) {
           fullTranscript += event.results[i][0].transcript;
+          if (i < event.results.length - 1) {
+            fullTranscript += ' ';
+          }
         }
         
         console.log('Transcript:', fullTranscript);
@@ -97,8 +104,21 @@ const Report = () => {
       recognitionInstance.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         
-        // Don't show error for aborted (user stopped)
-        if (event.error === 'aborted') {
+        // Don't show error for aborted or no-speech on Pi
+        if (event.error === 'aborted' || event.error === 'no-speech') {
+          // Auto-restart on no-speech for Pi compatibility
+          if (event.error === 'no-speech' && isRecordingRef.current) {
+            console.log('No speech detected, restarting...');
+            setTimeout(() => {
+              if (isRecordingRef.current) {
+                try {
+                  recognitionInstance.start();
+                } catch (e) {
+                  console.log('Restart failed:', e);
+                }
+              }
+            }, 300);
+          }
           return;
         }
         
@@ -107,9 +127,6 @@ const Report = () => {
         
         let errorMessage = 'Recording failed. ';
         switch (event.error) {
-          case 'no-speech':
-            errorMessage = 'No speech detected. Please try speaking.';
-            break;
           case 'audio-capture':
             errorMessage = 'No microphone found. Please check your device.';
             break;
@@ -126,26 +143,43 @@ const Report = () => {
       };
 
       recognitionInstance.onend = () => {
-        console.log('Speech recognition ended, should restart?', isRecordingRef.current);
+        console.log('Speech recognition ended, should restart?', isRecordingRef.current, 'mode:', inputModeRef.current);
         
-        // Auto-restart if still in voice mode
+        // Force restart for continuous recording on Pi
         if (isRecordingRef.current && inputModeRef.current === 'voice') {
-          console.log('Auto-restarting speech recognition...');
+          console.log('Force restarting for Pi Chromium...');
           setTimeout(() => {
-            try {
-              recognitionInstance.start();
-            } catch (error) {
-              console.log('Failed to restart recognition:', error);
+            if (isRecordingRef.current && inputModeRef.current === 'voice') {
+              try {
+                recognitionInstance.start();
+                console.log('Successfully restarted');
+              } catch (error) {
+                console.log('Failed to restart, will retry:', error);
+                // Retry once more after a longer delay
+                setTimeout(() => {
+                  if (isRecordingRef.current) {
+                    try {
+                      recognitionInstance.start();
+                    } catch (e) {
+                      console.error('Final restart failed:', e);
+                      setIsRecording(false);
+                      isRecordingRef.current = false;
+                    }
+                  }
+                }, 500);
+              }
             }
-          }, 100);
+          }, 200);
         } else {
           setIsRecording(false);
+          isRecordingRef.current = false;
         }
       };
 
       setRecognition(recognitionInstance);
     } else {
       console.log('Speech recognition not supported in this browser');
+      toast.error('Speech recognition is not supported in this browser.');
     }
   }, [form]);
 
