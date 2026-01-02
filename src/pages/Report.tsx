@@ -1308,10 +1308,20 @@ const Report = () => {
                         />
 
                         {/* Live detection banner: keyword highlights */}
-                        {liveKeyword?.matched && (
+                        {/* Only show if keywords matches AND AI hasn't ruled it out as harmless (L0) */}
+                        {liveKeyword?.matched && (!liveAiAnalysis || liveAiAnalysis.risk_level !== 'L0') && (
                           <div className={`p-3 rounded-md border ${liveKeyword.patternId === 'teacher_involved' ? 'bg-yellow-50 border-yellow-200' : 'bg-yellow-50 border-yellow-200'} mt-3`}>
-                            <div className="font-semibold">{liveKeyword.patternId === 'teacher_involved' ? 'Teacher/Staff reference detected' : `Detected: ${liveKeyword.reason}`}</div>
-                            <div className="text-sm text-muted-foreground">We noticed words that reference a teacher or staff member. To help us follow up, please include your name, class, and school; this will allow proper support.</div>
+                            <div className="font-semibold flex items-center gap-2">
+                              {liveKeyword.patternId === 'teacher_involved' ? 'Teacher/Staff reference detected' : `Detected: ${liveKeyword.reason}`}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              We noticed words that reference a teacher or staff member. To help us follow up, please include your name, class, and school; this will allow proper support.
+                            </div>
+                            {liveAiAnalysis && (
+                              <div className="mt-2 text-xs font-medium text-blue-600 flex items-center gap-1">
+                                <span>✓ AI Verification: {liveAiAnalysis.risk_level === 'L3' ? 'Confirmed Serious' : 'Analyzing context...'}</span>
+                              </div>
+                            )}
                           </div>
                         )}
 
