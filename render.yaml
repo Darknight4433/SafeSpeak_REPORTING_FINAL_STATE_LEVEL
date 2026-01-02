@@ -18,5 +18,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_AI_API_URL
-        generateValue: true
-        value: https://${{safespeak-ai-backend.host}}
+        fromService:
+          type: web
+          name: safespeak-ai-backend
+          property: host

@@ -16,7 +16,12 @@ export interface ReportOutput {
 }
 
 // AI backend URL - configurable via VITE_AI_API_URL for production (e.g., Render). Falls back to localhost for local dev.
-const AI_API_URL = (import.meta as any).env?.VITE_AI_API_URL || "http://localhost:8000";
+// AI backend URL - configurable via VITE_AI_API_URL for production (e.g., Render). Falls back to localhost for local dev.
+let envUrl = (import.meta as any).env?.VITE_AI_API_URL || "http://localhost:8000";
+if (!envUrl.startsWith("http")) {
+    envUrl = `https://${envUrl}`;
+}
+const AI_API_URL = envUrl;
 
 export async function analyzeReport(text: string): Promise<ReportOutput> {
     try {
