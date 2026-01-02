@@ -47,6 +47,61 @@ VITE_DATABASE_URL=https://your_project_id-default-rtdb.asia-southeast1.firebased
 VITE_PROJECT_ID=your_project_id
 
 
+# AI & Mobile configuration
+
+Add this to your `.env` (optional) to point the app at a hosted AI service:
+
+VITE_AI_API_URL=https://your-ai-service.example.com  # Point to deployed FastAPI AI service (e.g., Render). Defaults to http://localhost:8000 for local dev.
+
+## Mobile / APK notes
+
+- Web Speech API (browser-based) is used by default for voice input but is not reliably supported in WebViews or packaged APKs.
+- For an Android APK use Capacitor or Cordova and integrate a native speech plugin (e.g., `@capacitor-community/speech-recognition` or `cordova-plugin-speechrecognition`) or record audio and send to a server-side STT (Whisper/Google/VOSK).
+
+### Capacitor integration (recommended for Android APK)
+
+1. Install Capacitor (if not already):
+
+   npm install @capacitor/core @capacitor/cli --save
+   npx cap init
+
+2. Add Android platform:
+
+   npx cap add android
+
+3. Install the community speech plugin and sync:
+
+   npm install @capacitor-community/speech-recognition
+   npx cap sync
+
+4. Add permission to Android manifest (`android/app/src/main/AndroidManifest.xml`):
+
+   <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+5. JS usage: the app already has a generalized native integration in `src/lib/speech.ts`. At runtime the app will detect Capacitor and route start/stop events through the plugin. Ensure you call `requestPermission()` or accept the permission prompt when the app asks.
+
+6. Build & test on device:
+
+   npx cap open android
+   // Build/run from Android Studio on a device with microphone
+
+### Server-side STT (Whisper) — quick setup
+
+1. Install dependencies in the `safespeak-ai` virtualenv:
+
+   pip install -r requirements.txt
+
+   (The `requirements.txt` now includes `openai-whisper`. Whisper also requires `ffmpeg` available on the host system.)
+
+2. The FastAPI server exposes `POST /transcribe` that accepts a multipart file `file` and will return `{ "transcript": "..." }` when Whisper is available.
+
+3. If `openai-whisper` is not installed, the endpoint returns 501 with an instruction message. You can also replace the transcription logic with an external API (Google, AssemblyAI, or your own hosted STT) if you prefer.
+
+### Privacy & permission notes
+
+- The app will request microphone permission on first use.
+- For sensitive data, prefer on-device or private STT (consider legal/privacy implications if audio is uploaded to third-party services).
+
 Run the project
 
 npm run dev
