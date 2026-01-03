@@ -1427,7 +1427,7 @@ const Report = () => {
                       name="bullyName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xl font-semibold">Name of person bullying (if known)</FormLabel>
+                          <FormLabel className="text-xl font-semibold">Name of person bullying</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="e.g., John Doe"
