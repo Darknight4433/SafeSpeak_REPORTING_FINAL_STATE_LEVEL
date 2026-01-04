@@ -49,6 +49,14 @@ const formSchema = z.object({
   bullyName: z.string().optional(),
   isAnonymous: z.boolean().default(false),
   personType: z.string().optional(), // Student, Teacher, or Staff
+}).superRefine((data, ctx) => {
+  if (data.category === 'bullying' && (!data.bullyName || data.bullyName.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Name of the bully is required",
+      path: ["bullyName"]
+    });
+  }
 });
 
 const Report = () => {
@@ -1427,7 +1435,7 @@ const Report = () => {
                       name="bullyName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xl font-semibold">Name of person bullying</FormLabel>
+                          <FormLabel className="text-xl font-semibold">Name of person bullying <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input
                               placeholder="e.g., John Doe"
