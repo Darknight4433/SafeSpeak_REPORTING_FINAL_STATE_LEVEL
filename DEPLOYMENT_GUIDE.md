@@ -81,8 +81,8 @@ The `dist` folder contains your production build. Deploy it to:
 
 ### Files Modified:
 1. **src/lib/utils.ts** - Enhanced teacher detection (frontend)
-2. **safespeak-ai/intent_model.py** - Enhanced teacher detection (backend)
-3. **src/pages/Report.tsx** - Simplified UI, removed popup dialog, added logging
+2. **src/lib/safeSpeakAI.ts** - Introduced/updated rule-based analyzer (frontend; Python backend is not required)
+3. **src/pages/Report.tsx** - Simplified UI, changed School input to Class/Grade, added logging and escalation flow
 4. **src/config/school.ts** - NEW: Centralized school configuration
 
 ### Key Improvements:

@@ -11,7 +11,7 @@
 - Expanded the context window from 50 to 80 characters
 - Added more harmful verbs including "harass", "harassed", "slap", "kick"
 - Made regex case-insensitive with `/gi` flag
-- Updated Python backend (`safespeak-ai/intent_model.py`) with matching logic
+- Updated frontend rule-based analyzer and matching logic (no Python backend required)
 
 **Test Cases**:
 1. "tr harassed me very badly" → Should detect teacher_involved ✅
@@ -30,7 +30,7 @@
 **How to Use**:
 1. Check the "Demo AI" checkbox to use client-side rule-based AI
 2. Click "Check AI Now" to manually trigger AI analysis
-3. Useful when Python backend isn't running
+3. Useful when no external AI service is available
 
 ### 3. Enhanced Firebase Debugging ✅
 **Problem**: Reports not saving to Firebase, but errors were unclear
@@ -48,6 +48,8 @@
 - Better error messages shown to users
 
 ## Testing Instructions
+
+Note: Reports are now *named by default* (the "Anonymous" toggle is off). The reporter's name will be required for named submissions. For escalations involving teachers/staff we also require Class and Teacher/Staff name, and the escalation dialog will prompt for more details if the description is too short (minimum ~20 characters suggested).
 
 ### Step 1: Test Teacher Detection (Frontend Only)
 
@@ -86,27 +88,16 @@
    - Network connectivity
    - Browser console for detailed error info
 
-### Step 3: Test AI Backend (Optional)
+### Step 3: Test AI (Local Demo)
 
-If you want to test with the real AI backend:
+The app uses the built-in rule-based "Demo AI" analyzer by default. Use this mode to verify teacher/bully detection and risk classification without any external services.
 
-1. Start the Python backend:
-   ```bash
-   cd safespeak-ai
-   python -m uvicorn api:app --reload --port 8000
-   ```
+1. Make sure the **Demo AI** checkbox in the UI is **checked**
+2. Type a description (at least 10 characters)
+3. Click the **Check AI Now** button (or wait for live analysis)
+4. Observe the Live AI section for a risk level and the teacher detection banner if applicable
 
-2. Uncheck "Demo AI" in the UI
-
-3. Type a description (at least 20 characters)
-
-4. Watch for "Live AI: analyzing..." to change to a risk level
-
-5. Check browser console for:
-   ```
-   🧠 Sending to SafeSpeak AI...
-   ✅ AI Analysis Complete: {risk_level: "L3", ...}
-   ```
+Note: The project no longer depends on a Python AI server. If you have a custom AI endpoint, you can add `VITE_AI_API_URL` to `.env` and implement a compatible API, but this is optional.
 
 ## Common Issues & Solutions
 
@@ -150,9 +141,9 @@ If you want to test with the real AI backend:
 - Type at least 10 characters
 - Click "Check AI Now" button
 
-**If using Real AI Backend**:
-- Make sure Python server is running on port 8000
-- Check `VITE_AI_API_URL` environment variable
+**If using an external AI service (optional)**:
+- Set `VITE_AI_API_URL` to point at your AI endpoint
+- Make sure your service is running and reachable
 - Look for network errors in browser console
 
 ## Verification Checklist
@@ -180,5 +171,5 @@ If you want to test with the real AI backend:
 ## Files Changed
 
 1. `src/lib/utils.ts` - Enhanced teacher detection
-2. `safespeak-ai/intent_model.py` - Enhanced teacher detection (backend)
+2. `src/lib/safeSpeakAI.ts` - Introduced/updated rule-based analyzer (frontend; Python backend no longer required)
 3. `src/pages/Report.tsx` - Restored Demo AI toggle, enhanced logging

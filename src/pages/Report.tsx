@@ -47,9 +47,38 @@ const formSchema = z.object({
   contact: z.string().optional(),
   classroom: z.string().optional(),
   bullyName: z.string().optional(),
+  implicatedName: z.string().optional(),
   isAnonymous: z.boolean().default(false),
   personType: z.string().optional(), // Student, Teacher, or Staff
 }).superRefine((data, ctx) => {
+  // If not anonymous, reporter name is required
+  if (data.isAnonymous === false && (!data.name || data.name.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Your name is required when submitting a named report',
+      path: ['name']
+    });
+  }
+
+  // For teacher/staff cases, require the implicated person's name and the reporter's classroom
+  if ((data.personType === 'teacher' || data.personType === 'staff')) {
+    if (!data.implicatedName || data.implicatedName.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Name of the teacher/staff member is required',
+        path: ['implicatedName']
+      });
+    }
+    if (!data.classroom || data.classroom.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Class/Section is required for teacher/staff reports',
+        path: ['classroom']
+      });
+    }
+  }
+
+  // Bullying reports should include the bully's name when known
   if (data.category === 'bullying' && (!data.bullyName || data.bullyName.trim() === '')) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -93,7 +122,8 @@ const Report = () => {
       contact: '',
       classroom: '',
       bullyName: '',
-      isAnonymous: true,
+      implicatedName: '',
+      isAnonymous: false, // Named report by default
       personType: 'student',
     },
   });
@@ -179,21 +209,25 @@ const Report = () => {
         setIsRecording(false);
         isRecordingRef.current = false;
 
+        // Provide more helpful messages for common errors and include any event detail
         let errorMessage = 'Recording failed. ';
-        switch (event?.error) {
+        const err = event?.error || event;
+        switch (err) {
           case 'audio-capture':
             errorMessage = 'No microphone found. Please check your device.';
             break;
           case 'not-allowed':
-            errorMessage = 'Microphone access denied. Please allow microphone access.';
+          case 'PermissionDeniedError':
+            errorMessage = 'Microphone access denied. Please allow microphone access in your browser settings.';
             break;
           case 'network':
             errorMessage = 'Network error. Please check your connection.';
             break;
           default:
-            errorMessage = `Error: ${event?.error || event}. Please try again.`;
+            const extra = typeof err === 'object' ? (err?.message || JSON.stringify(err)) : String(err);
+            errorMessage = `Error: ${extra}. Try reloading or use Chrome/Edge.`;
         }
-        toast.error(errorMessage, { duration: 5000 });
+        toast.error(errorMessage, { duration: 7000 });
       };
 
       instance.onEnd = () => {
@@ -244,18 +278,22 @@ const Report = () => {
 
   const startRecording = async () => {
     if (!recognition || !recognition.isSupported) {
-      toast.error('Speech recognition is not supported on this device or environment.');
+      toast.error('Speech recognition is not supported on this device or environment. Try using Chrome or Edge for best compatibility.');
       return;
     }
 
     try {
-      // Clear transcript and start fresh
-      setTranscript('');
-
+      // Do NOT clear the transcript here so restarting recognition doesn't lose already captured text
       // For web, ensure we have microphone permission first
       if ((recognition as any).type === 'web') {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop());
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop());
+        } catch (permErr) {
+          // If permission denied, bubble up a clearer message
+          console.error('getUserMedia permission error:', permErr);
+          throw permErr;
+        }
       }
 
       await (recognition as any).start();
@@ -264,12 +302,14 @@ const Report = () => {
       toast.success('🎤 Recording... Speak now!');
     } catch (error: any) {
       console.error('Microphone permission error:', error);
-      if (error?.name === 'NotAllowedError') {
-        toast.error('Microphone access denied. Please allow microphone access in your browser settings.', { duration: 5000 });
-      } else if (error?.name === 'NotFoundError') {
-        toast.error('No microphone found. Please connect a microphone and try again.', { duration: 5000 });
+      const name = error?.name || error?.code || 'unknown_error';
+      // Provide a helpful message for common errors
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        toast.error('Microphone access denied. Please allow microphone access in your browser settings and reload the page.', { duration: 7000 });
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        toast.error('No microphone found. Please connect a microphone and try again.', { duration: 7000 });
       } else {
-        toast.error('Failed to access microphone. Please try again.', { duration: 5000 });
+        toast.error(`Failed to access microphone: ${name}. Try reloading the page or use Chrome/Edge.`, { duration: 7000 });
       }
     }
   };
@@ -291,7 +331,7 @@ const Report = () => {
     } else if (inputMode === 'text' && isRecording) {
       stopRecording();
     }
-  }, [inputMode]);
+  }, [inputMode, recognition]);
 
   // Sync recording state with ref
   useEffect(() => {
@@ -388,9 +428,7 @@ const Report = () => {
   useEffect(() => {
     const isTeacherInvolved = liveKeyword?.patternId === 'teacher_involved';
     if (isTeacherInvolved && personTypeWatcher !== 'student') {
-      // If teacher detected by keywords, AUTO-SELECT teacher (unless user explicitly picked something else? Actually, to be helpful, let's suggest it)
-      // But we must be careful not to overwrite user's manual correct of "student".
-      // Current logic: If keywords say Teacher, and user HAS NOT picked Student (e.g. empty or teacher), enforce/suggest Teacher.
+      // If teacher detected by keywords, AUTO-SELECT teacher (unless user explicitly picked something else)
       if (personTypeWatcher === '' || personTypeWatcher === 'teacher') {
         if (personTypeWatcher !== 'teacher') form.setValue('personType', 'teacher');
       }
@@ -401,6 +439,33 @@ const Report = () => {
       }
     }
   }, [liveKeyword, personTypeWatcher, isAnonymous, form]);
+
+  // EFFECT: When user explicitly selects Teacher or Staff, treat it like a manual detection
+  useEffect(() => {
+    try {
+      const pt = personTypeWatcher;
+      if (pt === 'teacher' || pt === 'staff') {
+        // If description doesn't already indicate teacher involvement, set liveKeyword to indicate user's selection
+        if (liveKeyword?.patternId !== 'teacher_involved') {
+          setLiveKeyword({ matched: true, patternId: 'teacher_involved', reason: 'User selected Teacher/Staff' });
+        }
+        // Ensure named reporting for teacher/staff selections
+        if (isAnonymous) {
+          setIsAnonymous(false);
+          form.setValue('isAnonymous', false);
+        }
+        // Inform the user gently
+        toast.info('Teacher/Staff selected — please provide the teacher/staff name and your class so we can escalate appropriately.');
+      } else {
+        // If user switched back to student and the liveKeyword was only from the manual selection, clear it
+        if (liveKeyword?.patternId === 'teacher_involved' && liveKeyword.reason === 'User selected Teacher/Staff') {
+          setLiveKeyword(null);
+        }
+      }
+    } catch (e) {
+      console.error('Error in personType watcher effect:', e);
+    }
+  }, [personTypeWatcher]);
 
 
 
@@ -496,7 +561,7 @@ const Report = () => {
       try {
         const { createRecorder, sendToTranscribe } = await import('@/lib/audioRecorder');
         const { VITE_AI_API_URL } = (import.meta as any).env || {};
-        const apiUrl = VITE_AI_API_URL || 'http://localhost:8000';
+        const apiUrl = VITE_AI_API_URL || '';  // No default server; use Demo AI or set VITE_AI_API_URL to enable server transcription
 
         const recorder = createRecorder();
         await recorder.start();
@@ -512,6 +577,9 @@ const Report = () => {
           setIsRecFallbackRecording(false);
           setIsTranscribing(true);
           try {
+            if (!apiUrl) {
+              throw new Error('Server transcription is not configured. Enable Demo AI or set VITE_AI_API_URL.');
+            }
             const transcript = await sendToTranscribe(apiUrl, blob);
             setTranscript(transcript);
             form.setValue('description', transcript);
@@ -667,11 +735,12 @@ const Report = () => {
             stack: err?.stack
           });
           const short = `${code}: ${message}`.slice(0, 220);
-          setLastPushError(short);
-          // Save the payload locally so the user's report is not lost
+          // Save failed payload locally and rely on retry logic (no user toast)
           try { enqueuePending(path, payload); } catch (e) { console.error('enqueuePending failed:', e); }
-          try { toast.error(`Failed to save report: ${message.split('\n')[0] || 'Saved locally and will retry.'}`); } catch (e) { }
           setPendingCount(loadPending().length);
+          // Note: we intentionally avoid showing an immediate toast to reduce UI noise.
+          console.warn(`Saved report locally for retry (push ${path} failed): ${short}`);
+
           return null;
         }
       };
@@ -744,6 +813,7 @@ const Report = () => {
     const name = form.getValues('name')?.trim();
     const classroom = form.getValues('classroom')?.trim();
     const bullyName = form.getValues('bullyName')?.trim();
+    const implicatedName = form.getValues('implicatedName')?.trim();
     let ok = true;
     if (!name) {
       form.setError('name', { type: 'required', message: 'Name is required for escalated reports' });
@@ -760,6 +830,20 @@ const Report = () => {
       ok = false;
     }
 
+    // If this pending submission involves a teacher or staff, require the implicated person's name
+    if (pendingSubmission?.values?.personType && (pendingSubmission.values.personType === 'teacher' || pendingSubmission.values.personType === 'staff') && !implicatedName) {
+      form.setError('implicatedName', { type: 'required', message: 'Name of the teacher/staff member is required for escalation' });
+      ok = false;
+    }
+
+    // Require a bit more detail in the description for escalated reports so investigators have usable context
+    const desc = pendingSubmission?.values?.description || '';
+    if (!desc || desc.trim().length < 20) {
+      form.setError('description', { type: 'required', message: 'Please add more details about what happened so our team can investigate properly' });
+      toast.error('Please add more detail in the description before we can escalate this report.');
+      ok = false;
+    }
+
     if (!ok) return;
 
     // Proceed: mark as named report and finish submission
@@ -769,7 +853,7 @@ const Report = () => {
 
     if (!pendingSubmission) return;
 
-    const updatedValues = { ...pendingSubmission.values, name, classroom, bullyName, isAnonymous: false };
+    const updatedValues = { ...pendingSubmission.values, name, classroom, bullyName, implicatedName, isAnonymous: false };
     const { reportNumber, reportId, aiAnalysis, keywordCheck } = pendingSubmission;
     setPendingSubmission(null);
 
@@ -883,8 +967,8 @@ const Report = () => {
       // If teacher is involved (and confirmed as Teacher/Staff), require identity details (name, class) before escalation (school is taken from config)
       if (isTeacherInvolved) {
         console.log('🎯 Teacher involved detected!');
-        const hasInfo = values.name && values.name.trim() && values.classroom && values.classroom.trim();
-        console.log('📋 Has required info?', { hasInfo, name: values.name, classroom: values.classroom });
+        const hasInfo = values.name && values.name.trim() && values.classroom && values.classroom.trim() && values.implicatedName && values.implicatedName.trim();
+        console.log('📋 Has required info?', { hasInfo, name: values.name, classroom: values.classroom, implicatedName: values.implicatedName });
 
         if (!hasInfo) {
           // Show error and stop submission - user must fill fields in main form
@@ -893,13 +977,16 @@ const Report = () => {
 
           // Set errors on the form fields
           if (!values.name || !values.name.trim()) {
-            form.setError('name', { type: 'required', message: 'Name is required for teacher/staff reports' });
+            form.setError('name', { type: 'required', message: 'Your name is required for teacher/staff reports' });
           }
           if (!values.classroom || !values.classroom.trim()) {
             form.setError('classroom', { type: 'required', message: 'Class is required for teacher/staff reports' });
           }
+          if (!values.implicatedName || !values.implicatedName.trim()) {
+            form.setError('implicatedName', { type: 'required', message: 'Name of the teacher/staff member is required for escalation' });
+          }
 
-          toast.error('Teacher/staff detected: Please provide your Name and Class to submit this report.');
+          toast.error('Teacher/staff detected: Please provide your name, class, and the name of the teacher/staff involved to submit this report.');
           return;
         }
 
@@ -1341,10 +1428,33 @@ const Report = () => {
                               <p className="text-sm text-muted-foreground">
                                 Because this involves a teacher or staff member, we need your details to follow up properly.
                               </p>
+                              <p className="text-sm mt-1"><strong>🔒 This data is encrypted and sent ONLY to the CCPRB (Central Child Protection Response Board).</strong> The school will NOT see this report initially.</p>
                             </div>
 
                             <div className="space-y-3">
-                              {/* Name field is required for Teacher/Staff */}
+                              {/* Name of the person involved (teacher/staff) - required */}
+                              <FormField
+                                control={form.control}
+                                name="implicatedName"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium">
+                                      Name of person involved (Teacher/Staff) <span className="text-destructive">*</span>
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder="e.g., Mr. Kumar"
+                                        className="bg-white"
+                                        disabled={isSubmitting}
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              {/* Reporter Name field (required for Teacher/Staff) */}
                               <FormField
                                 control={form.control}
                                 name="name"
@@ -1611,6 +1721,30 @@ const Report = () => {
                     </FormItem>
                   )}
                 />
+
+                {pendingSubmission?.keywordCheck?.patternId === 'teacher_involved' && (
+                  <>
+                    <div className="p-4 mb-3 rounded-md bg-blue-50 border border-blue-100">
+                      <h4 className="font-semibold">Your Safety is Our Priority</h4>
+                      <p className="text-sm text-muted-foreground mt-1">Because a teacher or staff member is involved, we need your details to take official action.</p>
+                      <p className="text-sm mt-2"><strong>🔒 This data is encrypted and sent ONLY to the CCPRB (Central Child Protection Response Board).</strong> The school will NOT see this report initially.</p>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="implicatedName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Teacher / Staff Name (required for escalation)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter name of the teacher or staff member" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
 
                 {pendingSubmission?.values?.category === 'bullying' && (
                   <FormField

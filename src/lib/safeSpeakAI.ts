@@ -15,39 +15,11 @@ export interface ReportOutput {
     };
 }
 
-// AI backend URL - configurable via VITE_AI_API_URL for production (e.g., Render). Falls back to localhost for local dev.
-// AI backend URL - configurable via VITE_AI_API_URL for production (e.g., Render). Falls back to localhost for local dev.
-let envUrl = (import.meta as any).env?.VITE_AI_API_URL || "http://localhost:8000";
-if (!envUrl.startsWith("http")) {
-    envUrl = `https://${envUrl}`;
-}
-const AI_API_URL = envUrl;
-
+// Removed remote AI dependency: use the rule-based analyzer locally instead of calling a Python backend.
+// analyzeReport now reuses the local rule-based implementation (same as demo) to avoid any external dependencies.
 export async function analyzeReport(text: string): Promise<ReportOutput> {
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-        const response = await fetch(`${AI_API_URL.replace(/\/$/, '')}/analyze`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ text }),
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            throw new Error(`AI Service Error: ${response.statusText}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to analyze report:", error);
-        // Fallback or re-throw depending on app needs
-        throw error;
-    }
+    // Synchronous rule-based fallback — keep the function async for compatibility
+    return analyzeReportDemo(text);
 }
 
 // Demo analyzer used for presentations when the real AI backend isn't available.

@@ -20,10 +20,10 @@
 - Made regex case-insensitive with `/gi` flag
 - Now matches word variations like "harassed", "harassing"
 
-✅ Updated `safespeak-ai/intent_model.py`:
-- Same improvements in Python backend
+✅ Updated frontend rule-based analyzer to mirror the improvements:
 - Context-aware detection with 80-char window
 - Checks for harmful verbs near teacher mentions
+- No Python backend is required for the rule-based detection
 
 **Test**: Type "tr harassed me very badly" → Should show yellow "Teacher/Staff reference detected" banner
 
@@ -77,7 +77,7 @@
 ## Files Modified
 
 1. **src/lib/utils.ts** - Enhanced teacher detection (frontend)
-2. **safespeak-ai/intent_model.py** - Enhanced teacher detection (backend)
+2. **src/lib/safeSpeakAI.ts** - Introduced/updated rule-based analyzer (frontend; Python backend no longer required)
 3. **src/pages/Report.tsx** - Restored Demo AI toggle + enhanced logging
 
 ---

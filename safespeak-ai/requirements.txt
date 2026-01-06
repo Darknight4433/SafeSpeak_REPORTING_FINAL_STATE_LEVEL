@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-transformers
-torch
-pydantic
-python-multipart
-# Optional (server-side transcription): install if you want /transcribe endpoint to work locally
-# Note: Whisper requires ffmpeg installed on the host system
-openai-whisper

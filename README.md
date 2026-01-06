@@ -49,14 +49,16 @@ VITE_PROJECT_ID=your_project_id
 
 # AI & Mobile configuration
 
-Add this to your `.env` (optional) to point the app at a hosted AI service:
+**Local Demo AI (default)**
 
-VITE_AI_API_URL=https://your-ai-service.example.com  # Point to deployed FastAPI AI service (e.g., Render). Defaults to http://localhost:8000 for local dev.
+The web app now uses a built-in, rule-based analyzer by default and **does not require a Python AI backend**. No extra services are required to get teacher/bully detection and basic risk routing working.
+
+If you need a hosted AI service later, you may optionally set `VITE_AI_API_URL` in your `.env` and implement an AI server that exposes an analysis endpoint; this is not necessary for normal operation.
 
 ## Mobile / APK notes
 
 - Web Speech API (browser-based) is used by default for voice input but is not reliably supported in WebViews or packaged APKs.
-- For an Android APK use Capacitor or Cordova and integrate a native speech plugin (e.g., `@capacitor-community/speech-recognition` or `cordova-plugin-speechrecognition`) or record audio and send to a server-side STT (Whisper/Google/VOSK).
+- For an Android APK use Capacitor or Cordova and integrate a native speech plugin (e.g., `@capacitor-community/speech-recognition` or `cordova-plugin-speechrecognition`) or record audio and send to a server-side STT (Google/AssemblyAI/VOSK). The repository no longer contains a maintained Python-based STT server.
 
 ### Capacitor integration (recommended for Android APK)
 
@@ -84,18 +86,6 @@ VITE_AI_API_URL=https://your-ai-service.example.com  # Point to deployed FastAPI
 
    npx cap open android
    // Build/run from Android Studio on a device with microphone
-
-### Server-side STT (Whisper) — quick setup
-
-1. Install dependencies in the `safespeak-ai` virtualenv:
-
-   pip install -r requirements.txt
-
-   (The `requirements.txt` now includes `openai-whisper`. Whisper also requires `ffmpeg` available on the host system.)
-
-2. The FastAPI server exposes `POST /transcribe` that accepts a multipart file `file` and will return `{ "transcript": "..." }` when Whisper is available.
-
-3. If `openai-whisper` is not installed, the endpoint returns 501 with an instruction message. You can also replace the transcription logic with an external API (Google, AssemblyAI, or your own hosted STT) if you prefer.
 
 ### Privacy & permission notes
 

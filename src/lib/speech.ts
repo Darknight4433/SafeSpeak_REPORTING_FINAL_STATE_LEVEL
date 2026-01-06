@@ -207,6 +207,8 @@ export function createRecognition(options?: CreateOptions): RecognitionInstance 
     };
 
     recog.onerror = (event: any) => {
+      // Surface helpful details to the caller and also log
+      console.warn('SpeechRecognition onerror', event);
       onError && onError(event);
     };
 

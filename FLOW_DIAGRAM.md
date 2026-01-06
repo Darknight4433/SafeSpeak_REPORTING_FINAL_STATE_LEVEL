@@ -111,10 +111,10 @@ Escalates to higher_authority_reports
 └──────────────────────────┘
 ```
 
-### Real AI (Server-Side)
+### Optional External AI Service (Server-Side)
 ```
 ┌──────────────────────────┐     HTTP POST      ┌──────────────────────────┐
-│  Browser (JavaScript)    │ ─────────────────→ │  Python Backend          │
+│  Browser (JavaScript)    │ ─────────────────→ │  External AI Service     │
 │  ──────────────────────  │                     │  ──────────────────────  │
 │  • Sends text to server  │                     │  • BART-Large model      │
 │  • Waits for response    │                     │  • Zero-shot learning    │
