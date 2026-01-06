@@ -62,6 +62,31 @@ If you need a hosted AI service later, you may optionally set `VITE_AI_API_URL` 
 
 ### Capacitor integration (recommended for Android APK)
 
+## Building a Linux desktop app (Electron) for Raspberry Pi 3 B
+
+This project can be packaged into an Electron app targeting ARMv7 (Raspberry Pi 3 B).
+
+Quick steps (local):
+
+1. Ensure you have Node.js installed on your build machine.
+2. Install dev tools: npm install --save-dev electron electron-builder concurrently wait-on electron-is-dev
+3. Build the web app for production: npm run build
+4. Produce a Linux ARMv7 package (AppImage + deb): npm run dist:linux-armv7
+   - Note: Building ARM artifacts on x64 hosts may require Docker or cross-compile setup. It often works best to build on the target or use an ARM builder/CI runner.
+
+Running the app in dev mode (useful for debugging):
+
+- Start dev server and Electron together:
+  npm run electron:dev
+
+Running on Raspberry Pi (recommended, lightweight):
+
+- Option A (recommended for Pi3): Run the web app in Chromium in kiosk mode for best performance.
+- Option B (packaged Electron): copy the AppImage/.deb to the Pi and install/run it.
+
+Notes:
+- The Web Speech API support on Raspberry Pi browsers may be limited. Consider using a server-side transcription fallback or native STT integration for reliable microphone-to-text support.
+
 1. Install Capacitor (if not already):
 
    npm install @capacitor/core @capacitor/cli --save
