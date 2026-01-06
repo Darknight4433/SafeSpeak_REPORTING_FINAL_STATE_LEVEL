@@ -3,13 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron-main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "serve:dist": "npx serve -s dist"
+    "serve:dist": "npx serve -s dist",
+    "electron:dev": "concurrently \"npm:dev\" \"wait-on http://localhost:8080 && electron .\"",
+    "dist:linux-armv7": "npm run build && electron-builder --linux --armv7l"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -71,6 +74,10 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^8.2.2",
+    "electron": "^26.6.10",
+    "electron-builder": "^24.13.3",
+    "electron-is-dev": "^2.0.0",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -80,6 +87,30 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "productName": "SafeSpeak_Reporting_State_Final",
+    "appId": "com.safespeak.reporting",
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "electron-main.js",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist_electron"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Education",
+      "desktop": {
+        "Name": "SafeSpeak_Reporting_State_Final"
+      }
+    }
   }
 }
