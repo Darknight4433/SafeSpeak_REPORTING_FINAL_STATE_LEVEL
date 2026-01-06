@@ -1,7 +1,7 @@
 services:
   # React Frontend (Static Site)
   - type: web
-    name: safespeak-frontend
+    name: SafeSpeak_Reporting_State_Final
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
