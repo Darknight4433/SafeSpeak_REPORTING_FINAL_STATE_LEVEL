@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "main": "electron-main.js",
+  "description": "SafeSpeak — Student reporting desktop app",
+  "author": "Vaishnavi (Dark) <maintainer@example.com>",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -111,7 +113,8 @@
       "category": "Education",
       "desktop": {
         "Name": "SafeSpeak_Reporting_State_Final"
-      }
+      },
+      "maintainer": "Vaishnavi (Dark) <maintainer@example.com>"
     }
   }
 }
