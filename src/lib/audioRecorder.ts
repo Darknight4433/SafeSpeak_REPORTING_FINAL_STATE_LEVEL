@@ -69,3 +69,9 @@ export async function sendToTranscribe(apiUrl: string, audioBlob: Blob): Promise
   const data = await resp.json();
   return data.transcript || '';
 }
+
+// Convenience wrapper used by the app when an STT URL is not provided in env.
+export async function transcribeUsingConfig(audioBlob: Blob): Promise<string> {
+  const configured = (import.meta.env.VITE_STT_URL as string) || 'http://localhost:5000';
+  return sendToTranscribe(configured, audioBlob);
+}

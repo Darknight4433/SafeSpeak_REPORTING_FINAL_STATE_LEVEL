@@ -1,0 +1,13 @@
+[Unit]
+Description=Vosk STT server for SafeSpeak
+After=network.target
+
+[Service]
+Type=simple
+User=%U
+WorkingDirectory=%h/SafeSpeak_REPORTING_FINAL_STATE_LEVEL
+ExecStart=/usr/bin/env bash -lc 'cd %h/SafeSpeak_REPORTING_FINAL_STATE_LEVEL && . venv/bin/activate && python -m uvicorn stt.vosk_server:app --host 127.0.0.1 --port 5000'
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

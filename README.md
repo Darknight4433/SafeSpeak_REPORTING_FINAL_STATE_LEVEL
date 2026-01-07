@@ -128,6 +128,57 @@ Run the project
 
 npm run dev
 
+---
+
+## Local STT server (Vosk) — offline transcription (recommended)
+
+You can run a small local Vosk server on the Raspberry Pi to enable transcription of recorded audio without sending it to cloud services.
+
+1) Install prerequisites on Pi:
+
+```bash
+sudo apt update && sudo apt install -y ffmpeg python3-venv
+```
+
+2) Create a Python venv and install requirements
+
+```bash
+python3 -m venv venv
+. venv/bin/activate
+pip install -r stt/requirements.txt
+```
+
+3) Download a small Vosk model (example)
+
+```bash
+mkdir -p ~/.local/share
+cd ~/.local/share
+# download a small model; example name varies; check Vosk site for model URLs
+wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+unzip vosk-model-small-en-us-0.15.zip
+```
+
+4) Start server
+
+```bash
+./scripts/start-vosk.sh 127.0.0.1 5000
+# or for production, enable user systemd service
+systemctl --user enable --now vosk-safespeak.service
+```
+
+5) In the app, recordings will be posted to `http://localhost:5000/transcribe` by default when `VITE_STT_URL` is not configured.
+
+Note: Vosk requires `ffmpeg` for format conversions (webm -> wav). If you prefer a cloud STT, set `VITE_STT_URL` to your transcribe endpoint in `.env`.
+
+We provide a GitHub Actions workflow that cross-builds Linux ARM artifacts (AppImage + .deb) so you do not need to build on a Pi locally.
+
+- Pushes/PRs to `main` trigger the workflow to build `linux/arm64` and `linux/armv7` artifacts and upload them to the workflow run as downloadable artifacts.
+- To build locally on your Pi, see `scripts/build_pi.sh` (usage: `./scripts/build_pi.sh armv7` or `./scripts/build_pi.sh arm64`). Use temporary swap of 1–2GB while building.
+
+Run the project
+
+npm run dev
+
 
 Deploy (optional)
 

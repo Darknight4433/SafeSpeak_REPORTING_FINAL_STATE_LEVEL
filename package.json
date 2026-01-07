@@ -15,7 +15,8 @@
     "serve:dist": "npx serve -s dist",
     "electron:dev": "concurrently \"npm:dev\" \"wait-on http://localhost:8080 && electron .\"",
     "dist:linux-armv7": "npm run build && electron-builder --linux --armv7",
-    "dist:linux-arm64": "npm run build && electron-builder --linux --arm64"
+    "dist:linux-arm64": "npm run build && electron-builder --linux --arm64",
+    "stt:dev": "python -m uvicorn stt.vosk_server:app --host 127.0.0.1 --port 5000"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
