@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "main": "electron-main.js",
+  "description": "SafeSpeak — Student reporting desktop app",
+  "author": "Vaishnavi (Dark) <maintainer@example.com>",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,7 +14,8 @@
     "preview": "vite preview",
     "serve:dist": "npx serve -s dist",
     "electron:dev": "concurrently \"npm:dev\" \"wait-on http://localhost:8080 && electron .\"",
-    "dist:linux-armv7": "npm run build && electron-builder --linux --armv7l"
+    "dist:linux-armv7": "npm run build && electron-builder --linux --armv7",
+    "dist:linux-arm64": "npm run build && electron-builder --linux --arm64"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -110,7 +113,8 @@
       "category": "Education",
       "desktop": {
         "Name": "SafeSpeak_Reporting_State_Final"
-      }
+      },
+      "maintainer": "Vaishnavi (Dark) <maintainer@example.com>"
     }
   }
 }
