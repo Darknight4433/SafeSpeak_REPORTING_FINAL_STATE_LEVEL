@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "serve:dist": "npx serve -s dist",
     "electron:dev": "concurrently \"npm:dev\" \"wait-on http://localhost:8080 && electron .\"",
-    "dist:linux-armv7": "npm run build && electron-builder --linux --armv7l"
+    "dist:linux-armv7": "npm run build && electron-builder --linux --armv7",
+    "dist:linux-arm64": "npm run build && electron-builder --linux --arm64"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

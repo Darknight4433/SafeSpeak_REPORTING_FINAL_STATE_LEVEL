@@ -1,0 +1,43 @@
+name: Cross-build Electron (ARM)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Build Linux ARM64 artifact
+        run: npx electron-builder --linux --arm64
+
+      - name: Build Linux ARMv7 artifact
+        run: npx electron-builder --linux --armv7
+
+      - name: List artifacts
+        run: ls -la dist_electron || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-linux-artifacts
+          path: |
+            dist_electron/*.AppImage
+            dist_electron/*.deb

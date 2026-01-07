@@ -117,6 +117,13 @@ Notes:
 - The app will request microphone permission on first use.
 - For sensitive data, prefer on-device or private STT (consider legal/privacy implications if audio is uploaded to third-party services).
 
+## CI cross-build for Electron (recommended)
+
+We provide a GitHub Actions workflow that cross-builds Linux ARM artifacts (AppImage + .deb) so you do not need to build on a Pi locally.
+
+- Pushes/PRs to `main` trigger the workflow to build `linux/arm64` and `linux/armv7` artifacts and upload them to the workflow run as downloadable artifacts.
+- To build locally on your Pi, see `scripts/build_pi.sh` (usage: `./scripts/build_pi.sh armv7` or `./scripts/build_pi.sh arm64`). Use temporary swap of 1–2GB while building.
+
 Run the project
 
 npm run dev
