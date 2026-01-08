@@ -755,6 +755,8 @@ const Report = () => {
 
       const shouldEscalate = (aiAnalysis && aiAnalysis.risk_level === 'L3') || keywordCheck?.matched || (values?.intensity === 'extreme') || isTeacherInvolved;
 
+      let higherResult: any = null;
+
       if (shouldEscalate) {
         try {
           const escalatedBy = isTeacherInvolved ? 'teacher_keyword' : (values?.intensity === 'extreme' ? 'user' : (aiAnalysis ? 'ai' : 'keyword_fallback'));
@@ -767,7 +769,7 @@ const Report = () => {
             override: reportDataBase.override || null
           };
 
-          const higherResult = await safePush('higher_authority_reports', { ...reportDataBase, escalationMeta });
+          higherResult = await safePush('higher_authority_reports', { ...reportDataBase, escalationMeta });
           console.log('Escalated to higher_authority_reports', escalationMeta, higherResult?.key);
           if (higherResult) {
             toast.success('Report automatically escalated to Higher Authority for immediate review.', { duration: 7000 });
@@ -778,13 +780,23 @@ const Report = () => {
         }
       }
 
-      // Dismiss loading and show success
+      // Dismiss loading
       toast.dismiss('submit-toast');
-      toast.success(`Report submitted successfully! Your report ID is: ${reportId}`, {
-        duration: 7000,
-      });
 
-      // Smooth reset with delay for better UX (cancelable on unmount)
+      if (pushedRef || (shouldEscalate && pushedRef === null)) {
+        // If we have a key (successful push) OR it was an escalation (which might have its own separate push)
+        // Note: effectively if safePush returns null, it's offline.
+
+        const isSuccess = pushedRef || (shouldEscalate && higherResult);
+
+        if (isSuccess) {
+          toast.success(`Report received! Your ID: ${reportId}`, { duration: 7000 });
+        } else {
+          toast.warning(`Report saved on device. We'll auto-send it when online.`, { duration: 7000 });
+        }
+      }
+
+      // Smooth reset with delay
       try {
         resetTimeoutRef.current = window.setTimeout(() => {
           try {
