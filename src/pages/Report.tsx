@@ -715,34 +715,48 @@ const Report = () => {
 
       let pushedRef = null;
 
-      // Safe push helper with debug logging so we don't throw unhandled errors during network/database ops
+      // Safe push helper with debug logging and retry logic so we attempt a few times before falling back to local save
       const safePush = async (path: string, payload: any) => {
-        try {
-          console.log(`🔄 Attempting push to ${path}...`, { payload });
-          const r = ref(database, path);
-          const res = await push(r, payload);
-          console.log(`✅ push ${path} succeeded`, res?.key);
-          setLastPushError(null);
-          return res;
-        } catch (err: any) {
-          // Capture and surface a compact, user-friendly error while logging details for debugging
-          const code = err?.code || err?.name || 'unknown_error';
-          const message = err?.message || String(err);
-          console.error(`❌ push ${path} failed:`, {
-            code,
-            message,
-            fullError: err,
-            stack: err?.stack
-          });
-          const short = `${code}: ${message}`.slice(0, 220);
-          // Save failed payload locally and rely on retry logic (no user toast)
-          try { enqueuePending(path, payload); } catch (e) { console.error('enqueuePending failed:', e); }
-          setPendingCount(loadPending().length);
-          // Note: we intentionally avoid showing an immediate toast to reduce UI noise.
-          console.warn(`Saved report locally for retry (push ${path} failed): ${short}`);
+        const maxRetries = 5;
+        const baseDelay = 500; // ms
+        const toastId = `submit-${payload?.reportId || Date.now()}`;
+        let attempt = 0;
 
-          return null;
+        while (attempt < maxRetries) {
+          attempt += 1;
+          try {
+            console.log(`🔄 Attempt ${attempt} push to ${path}...`, { payload });
+            toast.loading(`Submitting report (attempt ${attempt}/${maxRetries})...`, { id: toastId });
+            const r = ref(database, path);
+            const res = await push(r, payload);
+            console.log(`✅ push ${path} succeeded on attempt ${attempt}`, res?.key);
+            toast.dismiss(toastId);
+            toast.success('Report submitted successfully.', { duration: 4000 });
+            setLastPushError(null);
+            return res;
+          } catch (err: any) {
+            const code = err?.code || err?.name || 'unknown_error';
+            const message = err?.message || String(err);
+            console.error(`❌ push ${path} failed attempt ${attempt}:`, { code, message, fullError: err });
+
+            if (attempt >= maxRetries) {
+              const short = `${code}: ${message}`.slice(0, 220);
+              // After all retries fail, save locally and inform the user
+              try { enqueuePending(path, payload); } catch (e) { console.error('enqueuePending failed:', e); }
+              setPendingCount(loadPending().length);
+              toast.dismiss(toastId);
+              toast.error('Failed to submit report right now — it was saved locally and will be retried automatically.', { duration: 7000 });
+              console.warn(`Saved report locally for retry (push ${path} failed after ${maxRetries} attempts): ${short}`);
+              return null;
+            }
+
+            // Wait with exponential backoff before retrying
+            const delay = baseDelay * Math.pow(2, attempt - 1);
+            await new Promise((res) => setTimeout(res, delay));
+          }
         }
+
+        return null;
       };
 
       // For teacher/staff implicated reports, skip adding to the general admin 'reports' queue and send directly to higher_authority_reports
