@@ -7,8 +7,8 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 border-b bg-gradient-to-r from-primary/10 via-secondary/5 to-accent/10 backdrop-blur-lg">
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
-          <img src={safespeakLogo} alt="SafeSpeak_Reporting_State_Final" className="h-16 w-auto object-contain" />
-          <span className="ml-3 font-semibold hidden sm:inline">SafeSpeak_Reporting_State_Final</span>
+          <img src={safespeakLogo} alt="SafeSpeak" className="h-16 w-auto object-contain" />
+          <span className="ml-3 font-semibold hidden sm:inline">SafeSpeak</span>
         </Link>
         
         <div className="hidden md:flex items-center gap-6">
