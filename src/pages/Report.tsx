@@ -696,7 +696,7 @@ const Report = () => {
         original_location: values.location || null,
         school: schoolName,
         timestamp: serverTimestamp(),
-        status: isTeacherInvolved ? 'escalated' : 'pending',
+        status: isTeacherInvolved ? 'escalated' : 'received',
         // Add AI data if available
         aiAnalysis: aiAnalysis || { status: 'failed', note: 'AI Server unreachable' },
         // Use AI risk level if available, otherwise fallback to user's intensity or calculate/default

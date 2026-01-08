@@ -137,7 +137,7 @@ const Admin = () => {
   }
 
   const totalReports = reports.length;
-  const pendingReports = reports.filter((r) => r.status === 'pending').length;
+  const pendingReports = reports.filter((r) => r.status === 'pending' || r.status === 'received').length;
   const resolvedReports = reports.filter((r) => r.status === 'resolved').length;
 
   return (
@@ -208,7 +208,7 @@ const Admin = () => {
                         ) : (
                           <Badge variant="default">Named Report</Badge>
                         )}
-                        <Badge variant={report.status === 'pending' ? 'destructive' : 'default'}>
+                        <Badge variant={report.status === 'pending' || report.status === 'received' ? 'destructive' : 'default'}>
                           {report.status}
                         </Badge>
                       </div>
