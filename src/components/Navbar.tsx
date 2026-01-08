@@ -8,9 +8,8 @@ const Navbar = () => {
       <div className="container mx-auto px-4 h-20 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
           <img src={safespeakLogo} alt="SafeSpeak" className="h-16 w-auto object-contain" />
-          <span className="ml-3 font-semibold hidden sm:inline">SafeSpeak</span>
         </Link>
-        
+
         <div className="hidden md:flex items-center gap-6">
           <Link to="/" className="text-foreground/80 hover:text-foreground transition-colors">
             Home
